@@ -9,12 +9,14 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
      - it does not handle list, list has another serializer"""
     start_workout = serializers.BooleanField(write_only=True)
     finish_workout = serializers.BooleanField(write_only=True)
+
     class Meta:
         model = models.WorkoutLog
-        fields = ['id', 'name', 'description',
-                  'created_at', 'started_at', 'finished_at']
+        fields = ['id', 'name', 'description', 'created_at',
+                  'started_at', 'finished_at', 'duration',
+                  'start_workout', 'finish_workout']
         read_only_fields = ['id', 'started_at',
-                            'finished_at', 'created_at']
+                            'finished_at', 'created_at', 'duration']
 
     @staticmethod
     def _handle_start_finish_workout(instance, want_to_start, want_to_finish):
@@ -32,10 +34,9 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
         """
         already_started = bool(instance.started_at)
         already_finished = bool(instance.finished_at)
-        msg=""
+        msg = ""
         if want_to_start and want_to_finish:
-            msg = """You can't start and finish
-            a workout at the same time"""
+            msg = "You can't start and finish a workout at the same time"
         elif already_started and want_to_start:
             msg = "You can't start a workout twice"
         elif already_finished and want_to_finish:
@@ -50,7 +51,7 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
         elif want_to_finish:
             instance.finished_at = timezone.localtime(timezone.now())
         else:
-            msg="""something wrong in your
+            msg = """something wrong in your
             _start_or_finish_workout_handling function
              because this should Never been printed"""
             raise Exception(msg)
@@ -60,13 +61,13 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
         start_workout = validated_data.pop('start_workout', None)
         finish_workout = validated_data.pop('finish_workout', None)
         if start_workout or finish_workout:
-            msg = """start_workout and finish_workout
-            can not be set on creating"""
+            msg = "start_workout and finish_workout \
+can not be set on creating"
             raise serializers.ValidationError(msg)
         request = self.context.get('request')
         user = request.user
         validated_data['user'] = user
-        workout_log = models.WorkoutLog(validated_data)
+        workout_log = models.WorkoutLog.objects.create(**validated_data)
         return workout_log
 
     def update(self, instance, validated_data):
@@ -76,8 +77,7 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
         if want_to_start or want_to_finish:
             WorkoutLogSerializer.\
                 _handle_start_finish_workout(instance,
-                                                   want_to_start,
-                                                   want_to_finish)
+                                             want_to_start, want_to_finish)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

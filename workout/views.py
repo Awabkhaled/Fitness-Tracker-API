@@ -4,6 +4,7 @@ from rest_framework.authentication import TokenAuthentication
 from .serializers import WorkoutLogSerializer, WorkoutLogListSerializer
 from .models import WorkoutLog
 
+
 class WorkoutLogViewSet(ModelViewSet):
     """The view for handling workout endpoints:
     - Create
@@ -14,6 +15,7 @@ class WorkoutLogViewSet(ModelViewSet):
     """
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+    queryset = WorkoutLog.objects.all()
 
     def get_serializer_class(self):
         """Handle different serializers for different actions."""

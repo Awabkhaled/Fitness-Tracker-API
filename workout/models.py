@@ -18,10 +18,9 @@ class WorkoutLog(models.Model):
     - name field: the default value that frontend should gave me
                   is the '`dayname`_workout'
     """
-    name = models.CharField(max_length=254)
-    description = models.TextField(max_length=1000)
+    name = models.CharField(max_length=254, null=True, blank=True)
+    description = models.TextField(max_length=1000, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     duration = models.DurationField(null=True, blank=True)

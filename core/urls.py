@@ -29,5 +29,5 @@ urlpatterns = [
     ),
     path('admin/', admin.site.urls),
     path('user/', include('user.urls')),
-    #path('workout/', include('workout.urls')),
+    path('workout/', include('workout.urls')),
 ]
