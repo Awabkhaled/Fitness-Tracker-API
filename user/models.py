@@ -48,8 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
                                  blank=True, null=True)
     height = models.DecimalField(max_digits=5, decimal_places=2,
                                  blank=True, null=True)
-    bmi = models.DecimalField(max_digits=4, decimal_places=1,
-                              blank=True, null=True)
+    bmi = models.SmallIntegerField(blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -57,3 +56,17 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = UserManager()
     USERNAME_FIELD = 'email'
+
+    def _calculate_bmi(self):
+        """A helper method to calculate BMI using weight and height."""
+        if self.weight and self.height:
+            # Convert height from cm to meters
+            height_in_m = float(self.height) / 100
+            # calculate
+            self.bmi = round(float(self.weight) / (height_in_m ** 2), 1)
+        else:
+            self.bmi = None
+
+    def save(self, *args, **kwargs):
+        self._calculate_bmi()
+        super().save(*args, **kwargs)

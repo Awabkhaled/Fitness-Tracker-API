@@ -8,7 +8,9 @@ class UserSerializer(serializers.ModelSerializer):
     """Serializer for User operation: creating, updating, etc"""
     class Meta:
         model = User
-        fields = ['email', 'password']
+        fields = ['email', 'password', 'name', 'age', 'gender', 'weight',
+                  'height', 'bmi']
+        read_only_fields = ['bmi']
         extra_kwargs = {
             'password': {
                 'write_only': True,

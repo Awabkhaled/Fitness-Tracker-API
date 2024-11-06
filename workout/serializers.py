@@ -7,8 +7,8 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
     """Serializer for handling the
      basic CRUD operation for the WorkoutLogs.
      - it does not handle list, list has another serializer"""
-    start_workout = serializers.BooleanField(write_only=True)
-    finish_workout = serializers.BooleanField(write_only=True)
+    start_workout = serializers.BooleanField(write_only=True, default=False)
+    finish_workout = serializers.BooleanField(write_only=True, default=False)
 
     class Meta:
         model = models.WorkoutLog
