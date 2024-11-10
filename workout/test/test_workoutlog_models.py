@@ -3,6 +3,7 @@ This file is for testing the model related operations
 for the WorkoutLog model
 - Classes:
     - WorkoutLogsTest: for the related operations of WorkoutLog model
+    - WorkoutLogsExerciseTest: for exercise related test for WorkoutLog model
 - naming conventions:
     - test_...._suc: mean that the test is meant to success the operation
     it meant to do
@@ -13,6 +14,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from ..models import (
     WorkoutLog,
+    Exercise,
     get_default_workout_log_name)
 from django.utils import timezone
 
@@ -106,3 +108,39 @@ class WorkoutLogsTest(TestCase):
         self.user.delete()
         with self.assertRaises(WorkoutLog.DoesNotExist):
             WorkoutLog.objects.get(id=workout.id)
+
+
+class WorkoutLogsExerciseTest(TestCase):
+    """for exercise related tests for WorkoutLog model"""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_user(
+            email="user@gmail.com",
+            password="test1234"
+        )
+
+    def test_create_workout_with_exercise_suc(self):
+        """Test SUCCESS: creating a workout with an exercise"""
+        workout = WorkoutLog.objects.create(user=self.user)
+        exer1 = Exercise.objects.create(user=self.user, name='e1')
+        exer2 = Exercise.objects.create(user=self.user, name='e2')
+        workout.exercises.add(exer1)
+        workout.exercises.add(exer2)
+        self.assertIn(exer1, workout.exercises.all())
+        self.assertIn(exer2, workout.exercises.all())
+
+    def test_deleting_workout_exercise__suc(self):
+        """Test SUCCESS: deleting a workout or an exercise
+        does not affect either of them"""
+        workout = WorkoutLog.objects.create(user=self.user)
+        exer1 = Exercise.objects.create(user=self.user, name='e1')
+        workout.exercises.add(exer1)
+        # deleting a workout
+        workout.delete()
+        self.assertFalse(exer1.exercises.all())
+        # deleting an exercise
+        workout = WorkoutLog.objects.create(user=self.user)
+        workout.exercises.add(exer1)
+        exer1.delete()
+        self.assertFalse(workout.exercises.all())
