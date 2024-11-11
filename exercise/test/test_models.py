@@ -3,6 +3,7 @@ This file is for testing the model related operations
 for the exercises model
 - Classes:
     - ExerciseTest: for the related operations of Exercise model
+    - ExerciseLogTest: for the related operations of ExerciseLog model
 - Helper methods:
     - create_exercise: a helper method to crate an exercise
 - naming conventions:

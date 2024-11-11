@@ -135,7 +135,7 @@ class WorkoutLogsRetrieveListTest(TestCase):
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_with_nonauth_user_error(self):
-        """Test ERROR: retrieving a workout with the current user"""
+        """Test ERROR: list workouts with an unauthinticated user"""
         tmp_client = APIClient()
         res = tmp_client.get(WORKOUT_LOG_LIST_CREATE_URL)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)

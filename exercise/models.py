@@ -48,7 +48,6 @@ class Exercise(models.Model):
     def save(self, *args, **kwargs):
         if not self.name:
             raise ValueError("name has to be provided")
-
         exercises_same_name = Exercise.objects.filter(name__iexact=self.name,
                                                       user=self.user)
         if exercises_same_name.exclude(pk=self.pk).exists():
