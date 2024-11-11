@@ -1,7 +1,6 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
-from exercise.models import Exercise
 User = get_user_model()
 
 
@@ -27,8 +26,6 @@ class WorkoutLog(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
     duration = models.DurationField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    exercises = models.ManyToManyField(Exercise, blank=True,
-                                       related_name="exercises")
 
     def save(self, *args, **kwargs):
         # set the default value for the name if not given

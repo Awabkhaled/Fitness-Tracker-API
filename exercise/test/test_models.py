@@ -13,7 +13,8 @@ for the exercises model
 """
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from ..models import Exercise
+from exercise.models import Exercise, ExerciseLog
+from workout.models import WorkoutLog
 
 
 def create_exercise(name=None, user=None, **kwargs):
@@ -22,8 +23,7 @@ def create_exercise(name=None, user=None, **kwargs):
 
 
 class ExerciseTest(TestCase):
-    """Testing the related operations
-    of the Exercise model"""
+    """Testing the related operations of the Exercise model"""
 
     @classmethod
     def setUpTestData(cls):
@@ -100,8 +100,8 @@ class ExerciseTest(TestCase):
         Test SUCCESS: delete a user after creating exercise
         with it, should be delete the exercise
         """
-        exer = create_exercise("unique", self.tmp_user)
-        exer.delete()
+        create_exercise("unique", self.tmp_user)
+        self.tmp_user.delete()
         with self.assertRaises(Exercise.DoesNotExist):
             Exercise.objects.get_CI(name="unique")
 
@@ -122,27 +122,6 @@ class ExerciseTest(TestCase):
         exer = Exercise.objects.get_CI(name="new name")
         self.assertTrue(exer)
 
-    def test_create_exercise_with_all_fields_suc(self):
-        """Test SUCCESS: creating an exercise with all fields"""
-        exer = create_exercise(name="exer", user=self.user,
-                               description="desc1", number_of_sets=3,
-                               number_of_reps=4, rest_between_sets_seconds=5,
-                               duration_in_minutes=20)
-        self.assertEqual(exer.description, "desc1")
-        self.assertEqual(exer.number_of_sets, 3)
-        self.assertEqual(exer.number_of_reps, 4)
-        self.assertEqual(exer.rest_between_sets_seconds, 5)
-        self.assertEqual(exer.duration_in_minutes, 20)
-
-    def test_create_exercise_with_all_fields_default_suc(self):
-        """Test SUCCESS: all fields are set to default values"""
-        exer = create_exercise(name="exer", user=self.user)
-        self.assertIsNone(exer.description)
-        self.assertIsNone(exer.number_of_sets)
-        self.assertIsNone(exer.number_of_reps)
-        self.assertIsNone(exer.rest_between_sets_seconds)
-        self.assertIsNone(exer.duration_in_minutes)
-
     def test_exercise_manager_suc(self):
         """
         Test SUCCESS: all exercise manager feature
@@ -157,3 +136,101 @@ class ExerciseTest(TestCase):
         self.assertEqual(len(exer), 2)
         exer = Exercise.objects.filter_CI(name="E1")
         self.assertEqual(len(exer), 2)
+
+
+class ExerciseLogTest(TestCase):
+    """Testing the related operations of the ExerciseLog model"""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create(
+                email="test@gmail.com",
+                password="test1234"
+        )
+        cls.workout = WorkoutLog.objects.create(
+            name='default workoutlog',
+            user=cls.user
+        )
+        cls.exercise = create_exercise("exer1", cls.user)
+
+    def test_create_exerciseLog_suc(self):
+        """
+        Test SUCCESS: testing creating an exercise log
+        """
+        ExerciseLog.objects.create(workout_log=self.workout,
+                                   exercise=self.exercise, number_of_sets=5)
+        exlog = ExerciseLog.objects.get(workout_log=self.workout,
+                                        exercise=self.exercise)
+        self.assertEqual(exlog.number_of_sets, 5)
+        self.assertEqual(exlog.workout_log, self.workout)
+        self.assertEqual(exlog.exercise, self.exercise)
+
+    def test_create_exerciseLog_with_all_fields_suc(self):
+        """Test SUCCESS: creating an exercise_log with all fields"""
+        exlog = ExerciseLog.objects.create(workout_log=self.workout,
+                                           exercise=self.exercise,
+                                           notes='this is note',
+                                           number_of_sets=3, number_of_reps=4,
+                                           rest_between_sets_seconds=5,
+                                           duration_in_minutes=20)
+        exlog = ExerciseLog.objects.get(id=exlog.id)
+        self.assertEqual(exlog.workout_log, self.workout)
+        self.assertEqual(exlog.exercise, self.exercise)
+        self.assertEqual(exlog.number_of_sets, 3)
+        self.assertEqual(exlog.number_of_reps, 4)
+        self.assertEqual(exlog.rest_between_sets_seconds, 5)
+        self.assertEqual(exlog.duration_in_minutes, 20)
+
+    def test_create_exercise_with_all_fields_default_suc(self):
+        """Test SUCCESS: all fields are set to default values"""
+        exlog = ExerciseLog.objects.create(workout_log=self.workout,
+                                           exercise=self.exercise)
+        exlog = ExerciseLog.objects.get(id=exlog.id)
+        self.assertIsNone(exlog.notes)
+        self.assertIsNone(exlog.number_of_sets)
+        self.assertIsNone(exlog.number_of_reps)
+        self.assertIsNone(exlog.rest_between_sets_seconds)
+        self.assertIsNone(exlog.duration_in_minutes)
+
+    def test_create_exerciseLog_with_no_workout_or_user_error(self):
+        """Test ERROR: creating an exercise log without
+        a workout_log or a user"""
+        with self.assertRaises(Exception):
+            ExerciseLog.objects.create(exercise=self.exercise)
+        with self.assertRaises(Exception):
+            ExerciseLog.objects.create(workout_log=self.workout)
+
+    def test_relations_constrains_suc(self):
+        """
+        Test SUCCESS: delete a workout after creating exercise log
+        with it, should be delete the exercise log, and the same with user
+        """
+        tmp_workout = WorkoutLog.objects.create(user=self.user)
+        tmp_exercise = create_exercise("tmpexerise", self.user)
+        ExerciseLog.objects.create(workout_log=tmp_workout,
+                                   exercise=tmp_exercise, notes='unique')
+        tmp_workout.delete()
+        with self.assertRaises(ExerciseLog.DoesNotExist):
+            ExerciseLog.objects.get(notes='unique')
+        tmp_workout = WorkoutLog.objects.create(user=self.user)
+        ExerciseLog.objects.create(workout_log=tmp_workout,
+                                   exercise=tmp_exercise, notes='unique')
+        tmp_exercise.delete()
+        with self.assertRaises(ExerciseLog.DoesNotExist):
+            ExerciseLog.objects.get(notes='unique')
+
+    def test_reps_rest_set_to_zero_suc(self):
+        """Test SUCCESS: resps is set to 0 if sets is set to 0
+        and rest time is set to 0 if sets is set to 1 or less"""
+        exlog = ExerciseLog.objects.create(workout_log=self.workout,
+                                           exercise=self.exercise,
+                                           number_of_sets=10,
+                                           number_of_reps=3,
+                                           rest_between_sets_seconds=20)
+        exlog.number_of_sets = 0
+        exlog.save()
+        self.assertFalse(exlog.number_of_reps)
+        self.assertFalse(exlog.rest_between_sets_seconds)
+        exlog.number_of_sets = None
+        self.assertIsNone(exlog.number_of_reps)
+        self.assertIsNone(exlog.rest_between_sets_seconds)

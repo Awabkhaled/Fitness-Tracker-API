@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from workout.models import WorkoutLog
 User = get_user_model()
 
 
@@ -25,18 +26,12 @@ class ExerciseManager(models.Manager):
 
 class Exercise(models.Model):
     """
-    Exercise calss that is responsible of the Exercise
+    - Exercise class that is responsible of the Exercise
     in each workout log
-    each exercise is unique byt it's name
+    - each exercise is unique byt it's name
     """
     name = models.CharField(max_length=254, null=False, blank=False)
     description = models.TextField(null=True, blank=True)
-    number_of_sets = models.PositiveSmallIntegerField(null=True, blank=True)
-    number_of_reps = models.PositiveSmallIntegerField(null=True, blank=True)
-    rest_between_sets_seconds = models.PositiveSmallIntegerField(null=True,
-                                                                 blank=True)
-    duration_in_minutes = models.PositiveSmallIntegerField(null=True,
-                                                           blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     objects = ExerciseManager()
@@ -64,3 +59,30 @@ class Exercise(models.Model):
 
     def __str__(self):
         return self.name + " with " + self.user.__str__()
+
+
+class ExerciseLog(models.Model):
+    workout_log = models.ForeignKey(WorkoutLog, on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    notes = models.TextField(null=True, blank=True)
+    number_of_sets = models.PositiveSmallIntegerField(null=True, blank=True)
+    number_of_reps = models.PositiveSmallIntegerField(null=True, blank=True)
+    rest_between_sets_seconds = models.PositiveSmallIntegerField(null=True,
+                                                                 blank=True)
+    duration_in_minutes = models.PositiveSmallIntegerField(null=True,
+                                                           blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.number_of_sets:
+            if self.number_of_sets < 2:
+                self.rest_between_sets_seconds = 0
+            if self.number_of_sets < 1:
+                self.number_of_reps = 0
+        else:
+            self.number_of_reps = None
+            self.rest_between_sets_seconds = None
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Exercise {self.exercise.name} in workout\
+              {self.workout_log.name}"
