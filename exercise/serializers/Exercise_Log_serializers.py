@@ -1,20 +1,22 @@
 from rest_framework import serializers
 from exercise.models import Exercise, ExerciseLog
+from .Exercise_serializers import ExerciseListSerializer
 
 
 class ExerciseLogSerializer(serializers.ModelSerializer):
     """Serializer for the ExerciseLog model endpoints"""
     rest_is_in_minutes = serializers.BooleanField(
         write_only=True, default=False)
-    exercise_name = serializers.CharField(max_length=254)
+    exercise_name = serializers.CharField(write_only=True, max_length=254)
+    exercise = ExerciseListSerializer(read_only=True)
 
     class Meta:
         model = ExerciseLog
         fields = ['id', 'exercise_name', 'workout_log',
                   'exercise', 'notes', 'number_of_sets',
                   'number_of_reps', 'rest_between_sets_seconds',
-                  'duration_in_minutes', 'rest_is_in_minutes']
-        read_only_fields = ['id', 'exercise']
+                  'duration_in_minutes', 'rest_is_in_minutes', 'user']
+        read_only_fields = ['id', 'exercise', 'user']
         write_only_fields = ['rest_is_in_minutes', 'exercise_name']
 
     @staticmethod
@@ -59,17 +61,19 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
     def validate_exercise_name(self, exercise_name):
         """make sure that exercise_name is not empty or None"""
         if not exercise_name:
-            raise serializers.ValidationError("An exercise name is required.")
+            raise serializers.ValidationError("An exercise name is required")
         return exercise_name
 
     def validate_workout_log(self, workout):
         """make sure that the workout_log belongs to the current user"""
-        user = self.context['request'].user
-        if workout.user != user:
-            workout = None
-            raise serializers.ValidationError(
-                "You can only add logs to your own workout logs")
-        return workout
+        if not self.instance:
+            user = self.context['request'].user
+            if workout.user != user:
+                workout = None
+                raise serializers.ValidationError(
+                    "You can only add logs to your own workout logs")
+            return workout
+        return self.instance.workout_log
 
     def get_or_create_exercise(self, exercise_name):
         """Make sure that the exercise belongs to the current
@@ -86,14 +90,14 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Perform validation in the object level"""
         # validate the exercise field
-        exercise_name = data.pop('exercise_name')
-        exercise = self.get_or_create_exercise(exercise_name)
-        if not exercise:
-            raise \
-                serializers.ValidationError("System Error: \
-                                            while creating exercise log")
-        data['exercise'] = exercise
-
+        exercise_name = data.pop('exercise_name', None)
+        if exercise_name:
+            exercise = self.get_or_create_exercise(exercise_name)
+            if not exercise:
+                raise \
+                    serializers.ValidationError("System Error: \
+                                                while creating exercise log")
+            data['exercise'] = exercise
         return data
 
     def create(self, validated_data):
@@ -101,10 +105,16 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
         validated_data =\
             ExerciseLogSerializer._process_sets_reps_rest(None, validated_data)
 
+        # set the user
+        user = self.context['request'].user
+        validated_data['user'] = user
         exercise = ExerciseLog.objects.create(**validated_data)
         return exercise
 
     def update(self, instance, validated_data):
+        # handling updating workout ignore
+        validated_data.pop('workout_log', None)
+
         # process sets, reps, rest time
         validated_data = ExerciseLogSerializer\
             ._process_sets_reps_rest(instance, validated_data)

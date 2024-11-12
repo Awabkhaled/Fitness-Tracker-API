@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from workout.models import WorkoutLog
 User = get_user_model()
 
@@ -47,11 +46,11 @@ class Exercise(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.name:
-            raise ValueError("name has to be provided")
+            raise KeyError("name has to be provided")
         exercises_same_name = Exercise.objects.filter(name__iexact=self.name,
                                                       user=self.user)
         if exercises_same_name.exclude(pk=self.pk).exists():
-            raise ValidationError(
+            raise KeyError(
                 f"An exercise with the name'{self.name}' already exists.")
 
         super().save(*args, **kwargs)
@@ -63,13 +62,13 @@ class Exercise(models.Model):
 class ExerciseLog(models.Model):
     workout_log = models.ForeignKey(WorkoutLog, on_delete=models.CASCADE)
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     notes = models.TextField(null=True, blank=True)
     number_of_sets = models.PositiveSmallIntegerField(null=True, blank=True)
     number_of_reps = models.PositiveSmallIntegerField(null=True, blank=True)
     rest_between_sets_seconds = models.PositiveSmallIntegerField(null=True,
                                                                  blank=True)
-    duration_in_minutes = models.PositiveSmallIntegerField(null=True,
-                                                           blank=True)
+    duration_in_minutes = models.PositiveIntegerField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.number_of_sets:
@@ -84,4 +83,4 @@ class ExerciseLog(models.Model):
 
     def __str__(self):
         return f"Exercise {self.exercise.name} in workout\
-              {self.workout_log.name}"
+ {self.workout_log.name}"

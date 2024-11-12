@@ -1,7 +1,6 @@
 from rest_framework.viewsets import ModelViewSet
-from django.contrib.auth import get_user_model # noqa
-from exercise.models import Exercise, ExerciseLog # noqa
-from exercise.serializers import ( # noqa
+from exercise.models import Exercise, ExerciseLog
+from exercise.serializers import (
     ExerciseLogSerializer,
     ExerciseSerializer,
     ExerciseListSerializer)
@@ -62,5 +61,40 @@ class ExerciseViewSet(ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
 
+@extend_schema(
+    methods=['GET'],
+    description='Retriving Exercise_logs related to the current loged user'
+)
+@extend_schema(
+    methods=['POST'],
+    description='Creating Exercise_log with the current loged user'
+)
+@extend_schema(
+    methods=['PUT'],
+    description='Updating an Exercise_log by ID, only by its user'
+)
+@extend_schema(
+    methods=['PATCH'],
+    description='Partial updating an Exercise_log by ID, only by its user'
+)
+@extend_schema(
+    methods=['DELETE'],
+    description='Deleting an Exercise_log by ID, only by its user'
+)
 class ExerciseLogViewSet(ModelViewSet):
-    pass
+    serializer_class = ExerciseLogSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = ExerciseLog.objects.all()
+
+    def get_queryset(self):
+        """Return exercises for the authenticated user."""
+        return ExerciseLog.objects.filter(user=self.request.user)
+
+    @extend_schema(
+        methods=['GET'],
+        description="Retrieving specific Exercise_log by ID, only by its user."
+    )
+    def retrieve(self, request, *args, **kwargs):
+        """wrote this only for the extent_schema"""
+        return super().retrieve(request, *args, **kwargs)

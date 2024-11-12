@@ -62,7 +62,7 @@ class ExerciseTest(TestCase):
     def test_create_exercise_empty_name_error(self):
         """Test ERROR: creating an instance
         with an empty string name"""
-        with self.assertRaises(ValueError):
+        with self.assertRaises(KeyError):
             create_exercise(name='', user=self.user)
 
     def test_create_exercise_same_name_user_error(self):
@@ -138,6 +138,33 @@ class ExerciseTest(TestCase):
         exer = Exercise.objects.filter_CI(name="E1")
         self.assertEqual(len(exer), 2)
 
+    def test_updating_exercise_suc(self):
+        """Test SUCCESS: test updating exercise"""
+        self.exercise1.description = "new description"
+        self.exercise1.save()
+        self.assertEqual(self.exercise1.description, "new description")
+        old_name = self.exercise1.name
+        self.exercise1.name = "new name"
+        self.exercise1.save()
+        self.assertEqual(self.exercise1.name, "new name")
+        self.exercise1.name = old_name
+        self.exercise1.save()
+
+    def test_updating_exercise_existing_name_error(self):
+        """Test ERROR: updating an exercise with a name that already exists"""
+        tmp_exer = create_exercise(name='tmpExercise', user=self.user)
+        self.exercise1.name = 'TmPExeRcise'
+        with self.assertRaises(KeyError):
+            self.exercise1.save()
+        self.exercise1.refresh_from_db()
+        self.assertEqual(self.exercise1.name, 'exer1')
+        exers = Exercise.objects.filter(user=self.user)
+        exers_name = [exer.name for exer in exers]
+        self.assertIn('tmpExercise', exers_name)
+        self.assertIn('exer1', exers_name)
+        self.assertNotIn('TmPExeRcise', exers_name)
+        tmp_exer.delete()
+
 
 class ExerciseLogTest(TestCase):
     """Testing the related operations of the ExerciseLog model"""
@@ -159,12 +186,14 @@ class ExerciseLogTest(TestCase):
         Test SUCCESS: testing creating an exercise log
         """
         ExerciseLog.objects.create(workout_log=self.workout,
-                                   exercise=self.exercise, number_of_sets=5)
+                                   exercise=self.exercise, number_of_sets=5,
+                                   user=self.user)
         exlog = ExerciseLog.objects.get(workout_log=self.workout,
                                         exercise=self.exercise)
         self.assertEqual(exlog.number_of_sets, 5)
         self.assertEqual(exlog.workout_log, self.workout)
         self.assertEqual(exlog.exercise, self.exercise)
+        self.assertEqual(exlog.user, self.user)
 
     def test_create_exerciseLog_with_all_fields_suc(self):
         """Test SUCCESS: creating an exercise_log with all fields"""
@@ -173,7 +202,8 @@ class ExerciseLogTest(TestCase):
                                            notes='this is note',
                                            number_of_sets=3, number_of_reps=4,
                                            rest_between_sets_seconds=5,
-                                           duration_in_minutes=20)
+                                           duration_in_minutes=20,
+                                           user=self.user)
         exlog = ExerciseLog.objects.get(id=exlog.id)
         self.assertEqual(exlog.workout_log, self.workout)
         self.assertEqual(exlog.exercise, self.exercise)
@@ -181,11 +211,13 @@ class ExerciseLogTest(TestCase):
         self.assertEqual(exlog.number_of_reps, 4)
         self.assertEqual(exlog.rest_between_sets_seconds, 5)
         self.assertEqual(exlog.duration_in_minutes, 20)
+        self.assertEqual(exlog.user, self.user)
 
     def test_create_exercise_with_all_fields_default_suc(self):
         """Test SUCCESS: all fields are set to default values"""
         exlog = ExerciseLog.objects.create(workout_log=self.workout,
-                                           exercise=self.exercise)
+                                           exercise=self.exercise,
+                                           user=self.user)
         exlog = ExerciseLog.objects.get(id=exlog.id)
         self.assertIsNone(exlog.notes)
         self.assertIsNone(exlog.number_of_sets)
@@ -193,32 +225,68 @@ class ExerciseLogTest(TestCase):
         self.assertIsNone(exlog.rest_between_sets_seconds)
         self.assertIsNone(exlog.duration_in_minutes)
 
-    def test_create_exerciseLog_with_no_workout_or_user_error(self):
+    def test_create_exerciseLog_with_no_workout_exercise_or_user_error(self):
         """Test ERROR: creating an exercise log without
         a workout_log or a user"""
         with self.assertRaises(Exception):
-            ExerciseLog.objects.create(exercise=self.exercise)
+            ExerciseLog.objects.create(exercise=self.exercise, user=self.user)
         with self.assertRaises(Exception):
-            ExerciseLog.objects.create(workout_log=self.workout)
+            ExerciseLog.objects.create(workout_log=self.workout,
+                                       user=self.user)
+        with self.assertRaises(Exception):
+            ExerciseLog.objects.create(workout_log=self.workout,
+                                       exercise=self.exercise)
 
-    def test_relations_constrains_suc(self):
+    def test_relations_constrains_workout_suc(self):
         """
         Test SUCCESS: delete a workout after creating exercise log
-        with it, should be delete the exercise log, and the same with user
+        with it, should be delete the exercise log
         """
         tmp_workout = WorkoutLog.objects.create(user=self.user)
         tmp_exercise = create_exercise("tmpexerise", self.user)
-        ExerciseLog.objects.create(workout_log=tmp_workout,
+        tmp_user = get_user_model().objects.create(email='tmp@gmail.com',
+                                                   password='pass1234')
+        ExerciseLog.objects.create(workout_log=tmp_workout, user=tmp_user,
                                    exercise=tmp_exercise, notes='unique')
         tmp_workout.delete()
         with self.assertRaises(ExerciseLog.DoesNotExist):
             ExerciseLog.objects.get(notes='unique')
+        tmp_user.delete()
+        tmp_exercise.delete()
+
+    def test_relations_constrains_exercise_suc(self):
+        """
+        Test SUCCESS: delete an exercise after creating exercise log
+        with it, should be delete the exercise log
+        """
         tmp_workout = WorkoutLog.objects.create(user=self.user)
-        ExerciseLog.objects.create(workout_log=tmp_workout,
+        tmp_exercise = create_exercise("tmpexerise", self.user)
+        tmp_user = get_user_model().objects.create(email='tmp@gmail.com',
+                                                   password='pass1234')
+        ExerciseLog.objects.create(workout_log=tmp_workout, user=tmp_user,
                                    exercise=tmp_exercise, notes='unique')
         tmp_exercise.delete()
         with self.assertRaises(ExerciseLog.DoesNotExist):
             ExerciseLog.objects.get(notes='unique')
+        tmp_user.delete()
+        tmp_workout.delete()
+
+    def test_relations_constrains_user_suc(self):
+        """
+        Test SUCCESS: delete a user after creating exercise log
+        with it, should be delete the exercise log
+        """
+        tmp_workout = WorkoutLog.objects.create(user=self.user)
+        tmp_exercise = create_exercise("tmpexerise", self.user)
+        tmp_user = get_user_model().objects.create(email='tmp@gmail.com',
+                                                   password='pass1234')
+        ExerciseLog.objects.create(workout_log=tmp_workout, user=tmp_user,
+                                   exercise=tmp_exercise, notes='unique')
+        tmp_user.delete()
+        with self.assertRaises(ExerciseLog.DoesNotExist):
+            ExerciseLog.objects.get(notes='unique')
+        tmp_exercise.delete()
+        tmp_workout.delete()
 
     def test_reps_rest_set_to_zero_suc(self):
         """Test SUCCESS: resps is set to 0 if sets is set to 0
@@ -226,7 +294,7 @@ class ExerciseLogTest(TestCase):
         exlog = ExerciseLog.objects.create(workout_log=self.workout,
                                            exercise=self.exercise,
                                            number_of_sets=10,
-                                           number_of_reps=3,
+                                           number_of_reps=3, user=self.user,
                                            rest_between_sets_seconds=20)
         exlog.number_of_sets = 0
         exlog.save()

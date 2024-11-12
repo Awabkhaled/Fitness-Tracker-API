@@ -7,7 +7,7 @@ actions and constrains on the Exercise endpoints
     - ExerciseUpdateTest: For updating related operations
     - ExerciseDeleteTest: For deleting related operations
 - Helper functions:
-    - GET_EXERCISE_DETAIL_URL: get the url for the endpoint responsibel for:
+    - GET_EXERCISE_DETAIL_URL: get the url for the endpoint responsible for:
         - Retrieve
         - Update
         - Delete
@@ -29,7 +29,6 @@ from rest_framework import status
 from django.test import TestCase
 from django.urls import reverse
 from exercise.models import Exercise
-from django.core.exceptions import ValidationError
 EXERCISE_LIST_CREATE_URL = reverse('exercise:exercise-list')
 
 
@@ -107,11 +106,11 @@ class ExerciseCreationTest(TestCase):
     def test_create_exercise_with_case_insensitive_error(self):
         """Test ERROR: the case insensitive feature for
         the name of the exercise"""
-        with self.assertRaises(ValidationError):
-            res = self.client.post(EXERCISE_LIST_CREATE_URL,
-                                   {'name': 'dEfAultname', 'user': self.user})
-            self.assertIn("An exercise with the \
-                          name'dEfAultname' already exists ", res.data)
+        res = self.client.post(EXERCISE_LIST_CREATE_URL,
+                               {'name': 'dEfAultname', 'user': self.user})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        msg = "An exercise with the name 'dEfAultname' already exists."
+        self.assertIn(msg, res.data['name'])
 
     def test_create_exercise_name_case_insensitive_diff_user_suc(self):
         """Test SUCCESS: the case insensitive feature for
@@ -124,33 +123,6 @@ class ExerciseCreationTest(TestCase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(res.data['user'], tmp_user.id)
         tmp_user.delete()
-
-    def test_updating_exercise_suc(self):
-        """Test SUCCESS: test updating exercise"""
-        self.exercise.description = "new description"
-        self.exercise.save()
-        self.assertEqual(self.exercise.description, "new description")
-        old_name = self.exercise.name
-        self.exercise.name = "new name"
-        self.exercise.save()
-        self.assertEqual(self.exercise.name, "new name")
-        self.exercise.name = old_name
-        self.exercise.save()
-
-    def test_updating_exercise_existing_name_error(self):
-        """Test ERROR: updating an exercise with a name that already exists"""
-        tmp_exer = create_exercise(name='tmpExercise', user=self.user)
-        self.exercise.name = 'TmPExeRcise'
-        with self.assertRaises(ValidationError):
-            self.exercise.save()
-        self.exercise.refresh_from_db()
-        self.assertEqual(self.exercise.name, 'defaultName')
-        exers = Exercise.objects.filter(user=self.user)
-        exers_name = [exer.name for exer in exers]
-        self.assertIn('tmpExercise', exers_name)
-        self.assertIn('defaultName', exers_name)
-        self.assertNotIn('TmPExeRcise', exers_name)
-        tmp_exer.delete()
 
 
 class ExerciseRetrieveListTest(TestCase):
@@ -316,8 +288,8 @@ class ExerciseUpdateTest(TestCase):
             'name': 'DefauLtNAME'
         }
         URL = GET_EXERCISE_DETAIL_URL(tmp_exercise.id)
-        with self.assertRaises(ValidationError):
-            self.client.patch(URL, payload)
+        res = self.client.patch(URL, payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         tmp_exercise.refresh_from_db()
         self.assertEqual(tmp_exercise.name, 'oldname')
         tmp_exercise.delete()
