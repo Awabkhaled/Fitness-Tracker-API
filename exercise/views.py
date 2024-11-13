@@ -59,7 +59,8 @@ class ExerciseViewSet(ModelViewSet):
 
     def get_queryset(self):
         """Return exercises for the authenticated user."""
-        return Exercise.objects.filter(user=self.request.user).order_by('-created_at') # does not work noqa
+        return Exercise.objects.filter(user=self.request.user)\
+            .order_by('-created_at')
 
     @extend_schema(
         methods=['GET'],
@@ -215,7 +216,6 @@ class ExerciseProgressView(GenericAPIView):
         except ValueError:
             return Response(
                 {"Error": "Exercise ID must be a valid integer."}, status=400)
-
 
         # Get the instance
         try:

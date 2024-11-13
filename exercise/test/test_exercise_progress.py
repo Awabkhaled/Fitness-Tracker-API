@@ -63,39 +63,39 @@ class ExerciseProgressTest(APITestCase):
         self.workout_log = create_workout_log(
             user=self.user, name='defaultWorkoutLog')
         self.exercise1 = create_exercise(name='exer1',
-                                        user=self.user)
+                                         user=self.user)
         self.exercise2 = create_exercise(name='exer2',
-                                        user=self.user)
+                                         user=self.user)
         self.exercise_tmp1 = create_exercise(name='exer1', user=self.tmp_user)
         self.client.force_authenticate(self.user)
         self.exer1_3 = create_exercise_log(user=self.user,
-                                    exercise=self.exercise1,
-                                    workout=self.workout_log,
-                                    number_of_sets=31,
-                                    number_of_reps=32,
-                                    rest_between_sets_seconds=33,
-                                    duration_in_minutes=34)
+                                           exercise=self.exercise1,
+                                           workout=self.workout_log,
+                                           number_of_sets=31,
+                                           number_of_reps=32,
+                                           rest_between_sets_seconds=33,
+                                           duration_in_minutes=34)
         self.exer1_1 = create_exercise_log(user=self.user,
-                                    exercise=self.exercise1,
-                                    workout=self.workout_log,
-                                    number_of_sets=11,
-                                    number_of_reps=12,
-                                    rest_between_sets_seconds=13,
-                                    duration_in_minutes=14)
+                                           exercise=self.exercise1,
+                                           workout=self.workout_log,
+                                           number_of_sets=11,
+                                           number_of_reps=12,
+                                           rest_between_sets_seconds=13,
+                                           duration_in_minutes=14)
         self.exer2_1 = create_exercise_log(user=self.user,
-                                    exercise=self.exercise2,
-                                    workout=self.workout_log,
-                                    number_of_sets=211,
-                                    number_of_reps=212,
-                                    rest_between_sets_seconds=213,
-                                    duration_in_minutes=214)
+                                           exercise=self.exercise2,
+                                           workout=self.workout_log,
+                                           number_of_sets=211,
+                                           number_of_reps=212,
+                                           rest_between_sets_seconds=213,
+                                           duration_in_minutes=214)
         self.exer1_2 = create_exercise_log(user=self.user,
-                                    exercise=self.exercise1,
-                                    workout=self.workout_log,
-                                    number_of_sets=21,
-                                    number_of_reps=22,
-                                    rest_between_sets_seconds=23,
-                                    duration_in_minutes=24)
+                                           exercise=self.exercise1,
+                                           workout=self.workout_log,
+                                           number_of_sets=21,
+                                           number_of_reps=22,
+                                           rest_between_sets_seconds=23,
+                                           duration_in_minutes=24)
 
     def assert_exercise_progress(self, exercise, progress, idx):
         """
@@ -134,7 +134,6 @@ class ExerciseProgressTest(APITestCase):
         self.assert_exercise_progress(self.exer1_1, progress, 1)
         self.assert_exercise_progress(self.exer1_2, progress, 2)
 
-
     def test_track_progress_only_current_exercise_suc(self):
         """Test SUCCESS: the returned logs is this exercise's only """
 
@@ -167,11 +166,11 @@ class ExerciseProgressTest(APITestCase):
         Test ERROR: access the endpoint with other method than get
         """
         res = self.client.post(EXERCISE_PROGRESS_URL,
-                              {'exercise_id': self.exercise_tmp1.id})
+                               {'exercise_id': self.exercise_tmp1.id})
         self.assertIn('Method "POST" not allowed.', res.data['detail'])
 
         res = self.client.patch(EXERCISE_PROGRESS_URL,
-                              {'exercise_id': self.exercise_tmp1.id})
+                                {'exercise_id': self.exercise_tmp1.id})
         self.assertIn('Method "PATCH" not allowed.', res.data['detail'])
 
         res = self.client.put(EXERCISE_PROGRESS_URL,
@@ -179,7 +178,7 @@ class ExerciseProgressTest(APITestCase):
         self.assertIn('Method "PUT" not allowed.', res.data['detail'])
 
         res = self.client.delete(EXERCISE_PROGRESS_URL,
-                              {'exercise_id': self.exercise_tmp1.id})
+                                 {'exercise_id': self.exercise_tmp1.id})
         self.assertIn('Method "DELETE" not allowed.', res.data['detail'])
 
     def test_track_progress_invalid_id_error(self):
