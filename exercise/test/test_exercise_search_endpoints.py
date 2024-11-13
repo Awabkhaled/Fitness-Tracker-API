@@ -51,9 +51,9 @@ class ExerciseFieldSearchTest(APITestCase):
                         description="pull up desc")
         create_exercise("pull down", self.user,
                         description="pull down desc")
-        create_exercise("regular bench press", self.user,
+        create_exercise("regular bench press (1)", self.user,
                         description="regular bench desc")
-        create_exercise("incline bench press", self.user,
+        create_exercise("incline bench press (2)", self.user,
                         description="incline bench desc")
 
     def test_search_by_name_suc(self):
@@ -105,6 +105,26 @@ class ExerciseFieldSearchTest(APITestCase):
         exercises_name = [exer['name'] for exer in res.data]
         self.assertIn('pull up', exercises_name)
         self.assertIn('pull down', exercises_name)
+
+    def test_search_by_name_consecutive_spaces_suc(self):
+        """
+        Test SUCCESS: searching with consecutive space inside the string
+        """
+        search_name = " bench     press"
+        res = self.client.get(EXERCISE_FIELDS_SEARCH_URL,
+                              {'name': search_name})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 2)
+        exercises_name = [exer['name'] for exer in res.data]
+        self.assertIn('regular bench press (1)', exercises_name)
+        self.assertIn('incline bench press (2)', exercises_name)
+        search_name = " bench     press   (1)  "
+        res = self.client.get(EXERCISE_FIELDS_SEARCH_URL,
+                              {'name': search_name})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+        exercises_name = [exer['name'] for exer in res.data]
+        self.assertIn('regular bench press (1)', exercises_name)
 
     def test_search_by_name_empty_error(self):
         """

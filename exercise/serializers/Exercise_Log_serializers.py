@@ -1,21 +1,23 @@
 from rest_framework import serializers
 from exercise.models import Exercise, ExerciseLog
 from .Exercise_serializers import ExerciseListSerializer
+from exercise.validators import validate_exercise_name
 
 
 class ExerciseLogSerializer(serializers.ModelSerializer):
     """Serializer for the ExerciseLog model endpoints"""
+    exercise_name = serializers.CharField(write_only=True, max_length=254,
+                                          validators=[validate_exercise_name])
     rest_is_in_minutes = serializers.BooleanField(
         write_only=True, default=False)
-    exercise_name = serializers.CharField(write_only=True, max_length=254)
     exercise = ExerciseListSerializer(read_only=True)
 
     class Meta:
         model = ExerciseLog
-        fields = ['id', 'exercise_name', 'workout_log',
+        fields = ['id', 'exercise_name', 'workout_log', 'user',
                   'exercise', 'notes', 'number_of_sets',
                   'number_of_reps', 'rest_between_sets_seconds',
-                  'duration_in_minutes', 'rest_is_in_minutes', 'user']
+                  'duration_in_minutes', 'rest_is_in_minutes']
         read_only_fields = ['id', 'exercise', 'user']
         write_only_fields = ['rest_is_in_minutes', 'exercise_name']
 
@@ -95,8 +97,7 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
             exercise = self.get_or_create_exercise(exercise_name)
             if not exercise:
                 raise \
-                    serializers.ValidationError("System Error: \
-                                                while creating exercise log")
+                    serializers.ValidationError("System Error: while creating exercise log") # noqa
             data['exercise'] = exercise
         return data
 

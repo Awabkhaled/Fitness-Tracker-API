@@ -45,7 +45,7 @@ class Exercise(models.Model):
                                     name="unique_user_exercise_name")
         ]
         indexes = [
-            models.Index(fields=['user', 'name']),
+            models.Index(fields=['name']),
         ]
 
     def save(self, *args, **kwargs):
@@ -94,5 +94,4 @@ class ExerciseLog(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Exercise {self.exercise.name} in workout\
- {self.workout_log.name}"
+        return f"Exercise {self.exercise.name} in workout {self.workout_log.name}"  # noqa

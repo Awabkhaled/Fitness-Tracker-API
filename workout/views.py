@@ -46,7 +46,8 @@ class WorkoutLogViewSet(ModelViewSet):
 
     def get_queryset(self):
         """Return workout logs for the authenticated user."""
-        return WorkoutLog.objects.filter(user=self.request.user)
+        return WorkoutLog.objects.filter(user=self.request.user)\
+            .order_by('-created_at')
 
     @extend_schema(
         methods=['GET'],

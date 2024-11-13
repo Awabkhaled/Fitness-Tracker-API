@@ -164,24 +164,110 @@ class ExerciseLogCreationTest(TestCase):
         self.assertEqual(res.data['exercise']['id'], self.exercise.id)
         self.assertEqual(res.data['exercise']['name'], self.exercise.name)
 
-    def test_create_exercise_log_with_new_name_suc(self):
+    def test_create_exercise_log_with_spaces_for_name_suc(self):
         """
-        Test SUCCESS: creating an exercise log aith an exercise
-        name that does not exist in the Exercise Table, it will create it"""
+        Test SUCCESS: create an exercise log with
+        changing the spaces before the name"""
         payload = {
             'workout_log': self.workout_log.id,
-            'exercise_name': 'new_exercise'
+            'exercise_name': "    "+self.exercise.name+"    "
         }
         res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(res.data['user'], self.user.id)
         self.assertEqual(res.data['workout_log'], self.workout_log.id)
-        new_exercise = Exercise.objects.get_CI(name='new_exercise',
+        self.assertEqual(res.data['exercise']['id'], self.exercise.id)
+        self.assertEqual(res.data['exercise']['name'], self.exercise.name)
+
+    def test_create_exercise_log_with_new_name_suc(self):
+        """
+        Test SUCCESS: creating an exercise log aith an exercise
+        name that does not exist in the Exercise Table, it will create it
+        """
+        payload = {
+            'workout_log': self.workout_log.id,
+            'exercise_name': 'new exercise'
+        }
+        res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL, payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['user'], self.user.id)
+        self.assertEqual(res.data['workout_log'], self.workout_log.id)
+        new_exercise = Exercise.objects.get_CI(name='new exercise',
                                                user=self.user)
         self.assertEqual(res.data['exercise']['id'], new_exercise.id)
         self.assertEqual(res.data['exercise']['name'], new_exercise.name)
         self.assertFalse(new_exercise.description)
         self.assertEqual(new_exercise.user, self.user)
+
+    def test_create_exercise_log_with_valid_name_cases_suc(self):
+        """
+        Test SUCCESS: creating an exercise log aith an exercise
+        name that does not exist in the Exercise Table, but all valid values
+        """
+        valid_names = ["Z1()", "z-1", " z - 1 ", " z' - 1 '"]
+        for valid_name in valid_names:
+            payload = {
+                'workout_log': self.workout_log.id,
+                'exercise_name': f'{valid_name}'
+                }
+            res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL, payload)
+            self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(res.data['user'], self.user.id)
+            self.assertEqual(res.data['workout_log'], self.workout_log.id)
+            new_exercise = Exercise.objects.get_CI(
+                name=payload['exercise_name'].strip(), user=self.user)
+            self.assertEqual(res.data['exercise']['id'], new_exercise.id)
+            self.assertEqual(res.data['exercise']['name'], new_exercise.name)
+            self.assertFalse(new_exercise.description)
+            self.assertEqual(new_exercise.user, self.user)
+
+    def test_create_exercise_log_exercise_name_start_no_char_error(self):
+        """
+        Test ERROR: create an exercise log with a new exercise name
+        with name that does note start with a character
+        """
+        invalid_names = ['1f', "-Z", "'Z", "(Z)"]
+        for invalid_name in invalid_names:
+            payload = {
+                'workout_log': self.workout_log.id,
+                'exercise_name': f'{invalid_name}'
+                }
+            res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL, payload)
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn('Name must start with a letter.',
+                          res.data['exercise_name'])
+
+    def test_create_exercise_log_exercise_name_invalid_error(self):
+        """
+        Test ERROR: create an exercise log with a new invalid exercise name
+        """
+        invalid_names = ['A!', "Z @", "z %", "Z=", "c#", "c++", "d$", "s{}",
+                         "S[]", "X `", "d \"", "q ~", "ahmed ?", "awab >",
+                         "a ,", "d <"]
+        for invalid_name in invalid_names:
+            payload = {
+                'workout_log': self.workout_log.id,
+                'exercise_name': f'{invalid_name}'
+                }
+            res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL, payload)
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn('Name can only contain: (letters, numbers, spaces, hyphens, parentheses, and apostrophes)', res.data['exercise_name']) # noqa
+
+    def test_create_exercise_log_exercise_name_consicutive_spaces_error(self):
+        """
+        Test ERROR: create an exercise log with a new invalid exercise name
+        that has consicutive spaces in it
+        """
+        invalid_names = ['A  a', "Z x c     f", "z c   d f"]
+        for valid_name in invalid_names:
+            payload = {
+                'workout_log': self.workout_log.id,
+                'exercise_name': f'{valid_name}'
+                }
+            res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL, payload)
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn('Name cannot contain consecutive spaces.',
+                          res.data['exercise_name'])
 
     def test_create_exercise_log_no_exercise_name_workout_error(self):
         """
@@ -227,7 +313,7 @@ class ExerciseLogCreationTest(TestCase):
         an exercise belonging to other user
         -note: it will create a new exercise object
         """
-        new_exercise_diff_user = create_exercise(name='other_user_exercise',
+        new_exercise_diff_user = create_exercise(name='other user exercise',
                                                  user=self.tmp_user)
         exer = Exercise.objects.get_CI(name=new_exercise_diff_user.name,
                                        user=self.tmp_user)
@@ -443,7 +529,8 @@ class ExerciseLogUpdateTest(TestCase):
     def test_update_with_nonauth_user_error(self):
         """
         Test ERROR: updating an exercise
-        log with an unauthinticated user"""
+        log with an unauthinticated user
+        """
         tmp_client = APIClient()
         payload = {
             'notes': 'new notes'
@@ -524,6 +611,22 @@ class ExerciseLogUpdateTest(TestCase):
         self.assertEqual(self.exercise_log.exercise.id, new_exer.id)
         self.assertEqual(self.exercise_log.exercise.name, new_exer.name)
 
+    def test_partial_update_exercise_log_new_name_valid_cases_suc(self):
+        """
+        Test SUCCESS: updating an exercise log with a valid name
+        """
+        URL = GET_EXERCISE_LOG_DETAIL_URL(self.exercise_log.id)
+        self.exercise_log.notes = 'old notes'
+        self.exercise_log.save()
+        valid_names = ["Z1()", "z-1", " z - 1 ", " z' - 1 '"]
+        for valid_name in valid_names:
+            res = self.client.patch(URL, {'exercise_name': f"{valid_name}"})
+            self.exercise_log.refresh_from_db()
+            self.assertEqual(res.status_code, status.HTTP_200_OK)
+            self.assertEqual(self.exercise_log.exercise.name,
+                             valid_name.strip())
+            self.assertEqual(self.exercise_log.notes, 'old notes')
+
     def test_full_update_exercise_log_suc(self):
         """
         Test SUCCESS: full update on an existing exercise log
@@ -551,6 +654,21 @@ class ExerciseLogUpdateTest(TestCase):
                                            user=self.user)
         self.assertEqual(self.exercise_log.exercise.id, new_exer.id)
         self.assertEqual(self.exercise_log.exercise.name, new_exer.name)
+
+    def test_partial_update_exercise_log_new_name_invalid_cases_error(self):
+        """
+        Test ERROR: updating an exercise log with an invalid name
+        """
+        URL = GET_EXERCISE_LOG_DETAIL_URL(self.exercise_log.id)
+        invalid_names = ['A!', "Z @", "z %", "Z=", "c#", "c++", "d$", "s{}",
+                         "S[]", "X `", "d \"", "q ~", "ahmed ?", "awab >",
+                         "a ,", "d <", '1f', "-Z", "'Z", "(Z)",
+                         'A  a', "Z x c     f", "z c   d f"]
+        for invalid_name in invalid_names:
+            res = self.client.patch(URL, {'exercise_name': f"{invalid_name}"})
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertNotEqual(self.exercise_log.exercise.name,
+                                invalid_name.strip())
 
     def test_update_exercise_log_no_name_error(self):
         """
@@ -666,3 +784,34 @@ class ExerciseLogUpdateTest(TestCase):
         payload = {'duration_in_minutes': -2}
         res = self.client.patch(URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ExerciseLogDeleteTest(TestCase):
+    """class for the test operation related to the update process"""
+
+    def setUp(self):
+        self.user = create_user()
+        self.client = APIClient()
+        self.workout_log = create_workout_log(
+            user=self.user, name='defaultWorkoutLog')
+        self.exercise = create_exercise(name='defaultExercise',
+                                        user=self.user)
+        self.exercise_log = ExerciseLog.objects.create(
+            user=self.user, workout_log=self.workout_log,
+            exercise=self.exercise, notes='defaultExerciseLogNote')
+        self.client.force_authenticate(self.user)
+
+    def test_deleting_with_nonauth_user_error(self):
+        """
+        Test ERROR: deleting an exercise log with an unauthenticated user"""
+        tmp_client = APIClient()
+        res = tmp_client.delete(GET_EXERCISE_LOG_DETAIL_URL(
+            self.exercise_log.id))
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_deleting_exercise_suc(self):
+        """
+        Test SUCCESS: deleting an exercise"""
+        URL = GET_EXERCISE_LOG_DETAIL_URL(self.exercise_log.id)
+        res = self.client.delete(URL)
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)

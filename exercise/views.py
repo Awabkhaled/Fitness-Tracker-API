@@ -10,6 +10,9 @@ from rest_framework.serializers import ValidationError
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+import re
+from django.core.exceptions import ValidationError as VE
+from exercise.validators import validate_exercise_name
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
@@ -117,7 +120,7 @@ class ExerciseLogViewSet(ModelViewSet):
 )
 class ExerciseSearchView(ListAPIView):
     """
-    searching for an exercise by parameters, iii
+    searching for an exercise by parameters
     - For the name search: search for the exercise that contain this name
     in their name
     - used in endpoint to search about exercise while writing
@@ -134,10 +137,9 @@ class ExerciseSearchView(ListAPIView):
         """
         Filter execise by search filters
         """
-
-        # ensuring that only user exercises is returned
+        # extract user so I can ensuring that only user exercises is returned
         user = self.request.user
-        query = Q(user=user)
+        query = Q()
 
         # validate parameters
         search_params_serializer = ExerciseSearchSerializer(
@@ -145,13 +147,27 @@ class ExerciseSearchView(ListAPIView):
         search_params_serializer.is_valid(raise_exception=True)
         search_params = search_params_serializer.validated_data
 
-        if len(search_params) >= 1:
+        if search_params:
             # Filter based on validated search parameters
             name = search_params.pop('name', None)
             if name:
-                query &= Q(name__icontains=name)
+                try:
+                    name = re.sub(r'\s+', ' ', name.strip())
+                    validate_exercise_name(name)
+                    query &= Q(name__icontains=name)
+                except VE:
+                    pass
             for key, value in search_params.items():
                 query &= Q(**{f"{key}": f"{value}"})
-            return Exercise.objects.filter(query)
+            if len(query) < 1:
+                return []
+            query &= Q(user=user)
+            exercises = Exercise.objects.filter(query)
+            exercises = list(Exercise.objects.filter(query))
+            if exercises:
+                exercises = \
+                    sorted(exercises, key=lambda exercise: len(exercise.name))
+            return exercises
+
         else:
             raise ValidationError("Parameters empty or invalid")
