@@ -17,8 +17,8 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
         fields = ['id', 'exercise_name', 'workout_log', 'user',
                   'exercise', 'notes', 'number_of_sets',
                   'number_of_reps', 'rest_between_sets_seconds',
-                  'duration_in_minutes', 'rest_is_in_minutes']
-        read_only_fields = ['id', 'exercise', 'user']
+                  'duration_in_minutes', 'rest_is_in_minutes', 'created_at']
+        read_only_fields = ['id', 'exercise', 'user', 'created_at']
         write_only_fields = ['rest_is_in_minutes', 'exercise_name']
 
     @staticmethod
@@ -124,3 +124,14 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+
+
+class ExerciseLogProgressListSerializer(serializers.ModelSerializer):
+    """
+    serializer of the return to the list of progress of a certain exercise
+    """
+    class Meta:
+        model = ExerciseLog
+        fields = ['number_of_sets', 'number_of_reps',
+                  'rest_between_sets_seconds', 'duration_in_minutes',
+                  'created_at', 'workout_log']

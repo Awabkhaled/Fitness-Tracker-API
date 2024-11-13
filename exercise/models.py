@@ -36,6 +36,7 @@ class Exercise(models.Model):
                             validators=[validate_exercise_name])
     description = models.TextField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     objects = ExerciseManager()
 
@@ -81,6 +82,7 @@ class ExerciseLog(models.Model):
     rest_between_sets_seconds = models.PositiveSmallIntegerField(null=True,
                                                                  blank=True)
     duration_in_minutes = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if self.number_of_sets:

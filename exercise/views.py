@@ -1,11 +1,12 @@
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, GenericAPIView
 from rest_framework.viewsets import ModelViewSet
 from exercise.models import Exercise, ExerciseLog
 from exercise.serializers import (
     ExerciseLogSerializer,
     ExerciseSerializer,
     ExerciseListSerializer,
-    ExerciseSearchSerializer)
+    ExerciseSearchSerializer,
+    ExerciseLogProgressListSerializer)
 from rest_framework.serializers import ValidationError
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -14,6 +15,7 @@ import re
 from django.core.exceptions import ValidationError as VE
 from exercise.validators import validate_exercise_name
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework.response import Response
 
 
 @extend_schema(
@@ -57,7 +59,7 @@ class ExerciseViewSet(ModelViewSet):
 
     def get_queryset(self):
         """Return exercises for the authenticated user."""
-        return Exercise.objects.filter(user=self.request.user)
+        return Exercise.objects.filter(user=self.request.user).order_by('-created_at') # does not work noqa
 
     @extend_schema(
         methods=['GET'],
@@ -171,3 +173,68 @@ class ExerciseSearchView(ListAPIView):
 
         else:
             raise ValidationError("Parameters empty or invalid")
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="exercise_id",
+            type=int,
+            location=OpenApiParameter.QUERY,
+            description="id of the exercise to see the progress for",
+            required=True,
+        ),
+    ]
+)
+class ExerciseProgressView(GenericAPIView):
+    """
+    endpoint to return the progress of an exercise
+    - it takes an id for an exercise and returns list
+    of exercise logs with same user and erexrcise but
+    different workout logs, with some info serialized
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        returns all exercise logs with the same user and exercise
+        """
+        # Check if exercise_id is provided
+        exercise_id = request.GET.get('exercise_id')
+        if not exercise_id:
+            return Response({"Error": "Exercise id is required."}, status=400)
+
+        # Validate that exercise_id is a positive integer
+        try:
+            exercise_id = int(exercise_id)
+            if exercise_id <= 0:
+                return Response(
+                    {"Error": "Exercise ID must be a positive integer."},
+                    status=400)
+        except ValueError:
+            return Response(
+                {"Error": "Exercise ID must be a valid integer."}, status=400)
+
+
+        # Get the instance
+        try:
+            exercise = Exercise.objects.get(id=exercise_id, user=request.user)
+        except Exercise.DoesNotExist:
+            return Response({"detail": "Exercise not found."}, status=404)
+
+        # get the ExerciseLogs for the specified exercise and user
+        exercise_logs = ExerciseLog.objects.filter(
+            exercise=exercise,
+            user=request.user
+        ).order_by('created_at')
+
+        # Serialize the logs
+        serialized_logs = ExerciseLogProgressListSerializer(exercise_logs,
+                                                            many=True)
+
+        return Response({
+            "exercise_id": exercise.id,
+            "exercise_name": exercise.name,
+            "progress_logs": serialized_logs.data
+        })

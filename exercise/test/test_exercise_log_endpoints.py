@@ -221,6 +221,18 @@ class ExerciseLogCreationTest(TestCase):
             self.assertFalse(new_exercise.description)
             self.assertEqual(new_exercise.user, self.user)
 
+    def test_create_exercise_log_with_read_only_fields_error(self):
+        """
+        Testing ERROR: creating an exercise log with a read_only_fields
+        (created_at for now)
+        """
+        res = self.client.post(EXERCISE_LOG_LIST_CREATE_URL,
+                               {'exercise_name': self.exercise.name,
+                                'workout_log': self.workout_log.id,
+                                'created_at': True})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertNotEqual(res.data['created_at'], True)
+
     def test_create_exercise_log_exercise_name_start_no_char_error(self):
         """
         Test ERROR: create an exercise log with a new exercise name

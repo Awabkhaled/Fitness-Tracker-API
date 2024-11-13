@@ -1,7 +1,7 @@
 """
 This file is for testing the search operations on the exercises
 - Classes:
-    - ExerciseFieldSearchTest: For creation related operations
+    - ExerciseFieldSearchTest: testing searching feature for an exercise
 - Helper functions:
     - create_user: creates a user and returns it
     - create_exercise: create an exercise with specific user and name

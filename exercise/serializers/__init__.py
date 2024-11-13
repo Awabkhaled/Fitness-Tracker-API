@@ -1,7 +1,13 @@
-from .Exercise_Log_serializers import ExerciseLogSerializer
+from .Exercise_Log_serializers import (
+    ExerciseLogSerializer,
+    ExerciseLogProgressListSerializer
+)
 from .Exercise_serializers import (
-    ExerciseSerializer, ExerciseListSerializer, ExerciseSearchSerializer
+    ExerciseSerializer,
+    ExerciseListSerializer,
+    ExerciseSearchSerializer
 )
 
 __all__ = ['ExerciseLogSerializer', 'ExerciseSerializer',
-           'ExerciseListSerializer', 'ExerciseSearchSerializer']
+           'ExerciseListSerializer', 'ExerciseSearchSerializer',
+           'ExerciseLogProgressListSerializer']

@@ -6,7 +6,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
     """Serializer for the Exercise model enpoints"""
     class Meta:
         model = Exercise
-        fields = ['id', 'name', 'description', 'user']
+        fields = ['id', 'name', 'description', 'created_at', 'user']
         read_only_fields = ['id', 'user']
 
     def validate_name(self, name):

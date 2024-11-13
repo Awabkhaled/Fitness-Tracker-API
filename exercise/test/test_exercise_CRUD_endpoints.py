@@ -115,6 +115,16 @@ class ExerciseCreationTest(TestCase):
         self.assertEqual(res.data['user'], tmp_user.id)
         tmp_user.delete()
 
+    def test_create_exercise_with_read_only_fields_error(self):
+        """Testing ERROR: creating an exercise with a read_only_fields
+        (created_at for now)
+        """
+        res = self.client.post(EXERCISE_LIST_CREATE_URL,
+                               {'name': 'namename', 'created_at': True})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['name'], 'namename')
+        self.assertNotEqual(res.data['created_at'], True)
+
     def test_create_exercise_name_start_no_char_error(self):
         """
         Test ERROR: create an exercise with name that does
