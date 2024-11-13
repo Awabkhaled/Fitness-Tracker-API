@@ -15,6 +15,7 @@ for the exercises model
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from exercise.models import Exercise, ExerciseLog
+from django.core.exceptions import ValidationError
 from workout.models import WorkoutLog
 
 
@@ -47,6 +48,35 @@ class ExerciseTest(TestCase):
         self.assertEqual(exer.name, "exer")
         self.assertEqual(exer.user, self.user)
 
+    def test_create_exercise_allowed_char_suc(self):
+        """
+        Test SUCCESS: create an exercise with allowed characters validation
+        """
+        create_exercise("exer(1)", self.user)
+        exer = Exercise.objects.get(name="exer(1)", user=self.user)
+        self.assertTrue(exer)
+        create_exercise("exer(1)exercise4", self.user)
+        exer = Exercise.objects.get(name="exer(1)exercise4", user=self.user)
+        self.assertTrue(exer)
+        create_exercise("exer(1)exercise's'", self.user)
+        exer = Exercise.objects.get(name="exer(1)exercise's'", user=self.user)
+        self.assertTrue(exer)
+        create_exercise("exer(1)exeEciCse's(", self.user)
+        exer = Exercise.objects.get(name="exer(1)exeEciCse's(", user=self.user)
+        self.assertTrue(exer)
+        create_exercise("exer(1)-exeEciCse's4    ", self.user)
+        exer = Exercise.objects.get(name="exer(1)-exeEciCse's4",
+                                    user=self.user)
+        self.assertTrue(exer)
+
+    def test_create_exercise_trailing_spaces_suc(self):
+        """Test SUCCESS: creating an instance with trailing spaces"""
+        create_exercise("exer   ", self.user)
+        exer = Exercise.objects.get(name="exer", user=self.user)
+        self.assertTrue(exer)
+        self.assertEqual(exer.name, "exer")
+        self.assertEqual(exer.user, self.user)
+
     def test_create_exercise_no_user_error(self):
         """Test ERROR: creating an instance
         without user"""
@@ -64,6 +94,57 @@ class ExerciseTest(TestCase):
         with an empty string name"""
         with self.assertRaises(KeyError):
             create_exercise(name='', user=self.user)
+
+    def test_create_exercise_not_start_with_alpha_error(self):
+        """
+        Test ERROR: create an exercise that does not start with a character
+        """
+        with self.assertRaises(ValidationError):
+            create_exercise(name="1ahmed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="  ahmed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="-ahmed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="(ahmed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name=")ahmed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="'ahmed", user=self.user)
+
+    def test_create_exercise_consecutive_spaces_error(self):
+        """
+        Test ERROR: create an exercise with consecutive sapces
+        """
+        with self.assertRaises(ValidationError):
+            create_exercise(name="Ahm   ed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="Z  h m e d", user=self.user)
+
+    def test_create_exercise_not_allowed_char_error(self):
+        """
+        Test ERROR: create an exercise with not allowed characters
+        """
+        with self.assertRaises(ValidationError):
+            create_exercise(name="A#Hmed", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="A*", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="e/", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="z_", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="F^_", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="F@", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="F!", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="F[]", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="F{}", user=self.user)
+        with self.assertRaises(ValidationError):
+            create_exercise(name="f*-/+=%", user=self.user)
 
     def test_create_exercise_same_name_user_error(self):
         """Test ERROR: creating two instances

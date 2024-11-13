@@ -9,18 +9,19 @@ class ExerciseSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'user']
         read_only_fields = ['id', 'user']
 
-    def validate_name(self, value):
+    def validate_name(self, name):
         """Validate that the exercise name is unique for the user"""
         user = self.context['request'].user
         exercise_id = self.instance.id if self.instance else None
 
         # Check for duplicates, excluding the current instance
-        if Exercise.objects.filter_CI(name=value, user=user
-                                      ).exclude(pk=exercise_id).exists():
+        existing_exercise = Exercise.objects.filter_CI(name=name, user=user)\
+            .exclude(pk=exercise_id).first()
+        if existing_exercise:
             raise serializers.ValidationError(
-                f"An exercise with the name '{value}' already exists.")
+                f"An exercise with the name '{existing_exercise.name}' already exists.") # noqa
 
-        return value
+        return name
 
     def create(self, validated_data):
         user = self.context.get('request').user

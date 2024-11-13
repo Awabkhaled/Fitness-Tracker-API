@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from workout.models import WorkoutLog
+from .validators import validate_exercise_name
 User = get_user_model()
 
 
@@ -29,7 +30,10 @@ class Exercise(models.Model):
     in each workout log
     - each exercise is unique byt it's name
     """
-    name = models.CharField(max_length=254, null=False, blank=False)
+    name = models.CharField(max_length=254,
+                            null=False,
+                            blank=False,
+                            validators=[validate_exercise_name])
     description = models.TextField(null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -47,11 +51,19 @@ class Exercise(models.Model):
     def save(self, *args, **kwargs):
         if not self.name:
             raise KeyError("name has to be provided")
-        exercises_same_name = Exercise.objects.filter(name__iexact=self.name,
-                                                      user=self.user)
-        if exercises_same_name.exclude(pk=self.pk).exists():
+
+        # Manually trigger the full validation process
+        self.full_clean()  # This will call the field-level validators
+
+        # strip whitespace
+        self.name = self.name.strip()
+
+        # Check for duplicates, excluding the current instance
+        exercises_same_name = Exercise.objects.filter_CI(
+            name=self.name, user=self.user).exclude(pk=self.pk).first()
+        if exercises_same_name:
             raise KeyError(
-                f"An exercise with the name'{self.name}' already exists.")
+                f"An exercise with the name '{exercises_same_name.name}' already exists.") # noqa
 
         super().save(*args, **kwargs)
 
