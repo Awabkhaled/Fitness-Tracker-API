@@ -1,12 +1,16 @@
+from rest_framework.generics import ListAPIView
 from rest_framework.viewsets import ModelViewSet
 from exercise.models import Exercise, ExerciseLog
 from exercise.serializers import (
     ExerciseLogSerializer,
     ExerciseSerializer,
-    ExerciseListSerializer)
+    ExerciseListSerializer,
+    ExerciseSearchSerializer)
+from rest_framework.serializers import ValidationError
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema
+from django.db.models import Q
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
 @extend_schema(
@@ -98,3 +102,56 @@ class ExerciseLogViewSet(ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         """wrote this only for the extent_schema"""
         return super().retrieve(request, *args, **kwargs)
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="name",
+            type=str,
+            location=OpenApiParameter.QUERY,
+            description="Name of the exercise to search for",
+            required=False,
+        ),
+    ]
+)
+class ExerciseSearchView(ListAPIView):
+    """
+    searching for an exercise by parameters, iii
+    - For the name search: search for the exercise that contain this name
+    in their name
+    - used in endpoint to search about exercise while writing
+    in the exercise log by name
+    - or used in the regular search
+    - currently uses name only in the future will handle
+    other parameters if added
+    """
+    serializer_class = ExerciseListSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Filter execise by search filters
+        """
+
+        # ensuring that only user exercises is returned
+        user = self.request.user
+        query = Q(user=user)
+
+        # validate parameters
+        search_params_serializer = ExerciseSearchSerializer(
+            data=self.request.query_params)
+        search_params_serializer.is_valid(raise_exception=True)
+        search_params = search_params_serializer.validated_data
+
+        if len(search_params) >= 1:
+            # Filter based on validated search parameters
+            name = search_params.pop('name', None)
+            if name:
+                query &= Q(name__icontains=name)
+            for key, value in search_params.items():
+                query &= Q(**{f"{key}": f"{value}"})
+            return Exercise.objects.filter(query)
+        else:
+            raise ValidationError("Parameters empty or invalid")

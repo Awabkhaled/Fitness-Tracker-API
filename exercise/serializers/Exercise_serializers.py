@@ -41,3 +41,7 @@ class ExerciseListSerializer(serializers.ModelSerializer):
         model = Exercise
         fields = ['id', 'name']
         read_only_fields = ['id']
+
+
+class ExerciseSearchSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False, max_length=254)
