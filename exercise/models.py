@@ -82,6 +82,7 @@ class ExerciseLog(models.Model):
     rest_between_sets_seconds = models.PositiveSmallIntegerField(null=True,
                                                                  blank=True)
     duration_in_minutes = models.PositiveIntegerField(null=True, blank=True)
+    weight_in_kg = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

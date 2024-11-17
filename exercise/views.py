@@ -18,6 +18,62 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.response import Response
 
 
+def extract_progress(all_logs):
+    """
+    Extracts progress for each field from a list of exercise logs.
+    Tracks meaningful progress, ignoring unchanged values.
+    - **Example**
+        - sets, reps and rest_time would be something like that:
+        *[((11, 12, 13), '2024-11-16', 1), ((21, 22, 23), '2024-11-16', 1)]*
+        - duration time will be something like this :
+        *[(214, '2024-11-16', 1), (215, '2024-11-16', 1)]*
+    """
+    all_progress = dict()
+    counter_each_field = dict()
+
+    for log in all_logs:
+        created_at = log.pop('created_at')
+        workout_log = log.pop('workout_log')
+
+        for key, value in log.items():
+            if value is None:
+                if f"count_{key}" in counter_each_field:
+                    counter_each_field[f"count_{key}"] += 1
+                continue
+
+            # initializing the lists and counters
+            same_as_last = False  # if the current value is same as last one
+            if key not in all_progress:
+                all_progress[f"{key}"] = list()
+                all_progress[f"number_exercises_between_each_{key}"] = list()
+                counter_each_field[f"count_{key}"] = 0
+            else:
+                # calculating same_as_last
+                if key == 'sets_reps_restTime':
+                    # if the rest is None, ignore it in the comparing
+                    if value[2] is None:
+                        same_as_last = bool(
+                            value[0:2] == all_progress[f"{key}"][-1][0][0:2])
+                    else:
+                        same_as_last = \
+                            bool(value == all_progress[f"{key}"][-1][0])
+                else:
+                    same_as_last = bool(value == all_progress[f"{key}"][-1][0])
+                if not same_as_last:
+                    all_progress[f"number_exercises_between_each_{key}"].\
+                        append(counter_each_field[f"count_{key}"])
+                    counter_each_field[f"count_{key}"] = 0
+
+            if same_as_last:
+                counter_each_field[f"count_{key}"] += 1
+            else:
+                all_progress[key].append(
+                    (value, created_at, workout_log)
+                    )
+
+    return all_progress
+
+
 @extend_schema(
     methods=['GET'],
     description='Retriving Exercises related to the current loged user'
@@ -232,9 +288,9 @@ class ExerciseProgressView(GenericAPIView):
         # Serialize the logs
         serialized_logs = ExerciseLogProgressListSerializer(exercise_logs,
                                                             many=True)
-
+        progress = extract_progress(serialized_logs.data)
         return Response({
             "exercise_id": exercise.id,
             "exercise_name": exercise.name,
-            "progress_logs": serialized_logs.data
+            "progress": progress
         })

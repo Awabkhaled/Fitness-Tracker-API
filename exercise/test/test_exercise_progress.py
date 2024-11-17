@@ -68,48 +68,6 @@ class ExerciseProgressTest(APITestCase):
                                          user=self.user)
         self.exercise_tmp1 = create_exercise(name='exer1', user=self.tmp_user)
         self.client.force_authenticate(self.user)
-        self.exer1_3 = create_exercise_log(user=self.user,
-                                           exercise=self.exercise1,
-                                           workout=self.workout_log,
-                                           number_of_sets=31,
-                                           number_of_reps=32,
-                                           rest_between_sets_seconds=33,
-                                           duration_in_minutes=34)
-        self.exer1_1 = create_exercise_log(user=self.user,
-                                           exercise=self.exercise1,
-                                           workout=self.workout_log,
-                                           number_of_sets=11,
-                                           number_of_reps=12,
-                                           rest_between_sets_seconds=13,
-                                           duration_in_minutes=14)
-        self.exer2_1 = create_exercise_log(user=self.user,
-                                           exercise=self.exercise2,
-                                           workout=self.workout_log,
-                                           number_of_sets=211,
-                                           number_of_reps=212,
-                                           rest_between_sets_seconds=213,
-                                           duration_in_minutes=214)
-        self.exer1_2 = create_exercise_log(user=self.user,
-                                           exercise=self.exercise1,
-                                           workout=self.workout_log,
-                                           number_of_sets=21,
-                                           number_of_reps=22,
-                                           rest_between_sets_seconds=23,
-                                           duration_in_minutes=24)
-
-    def assert_exercise_progress(self, exercise, progress, idx):
-        """
-        helper method to assert the info returned
-        in the progress list for an exercise
-        """
-        self.assertEqual(exercise.number_of_reps,
-                         progress[idx]['number_of_reps'])
-        self.assertEqual(exercise.number_of_sets,
-                         progress[idx]['number_of_sets'])
-        self.assertEqual(exercise.rest_between_sets_seconds,
-                         progress[idx]['rest_between_sets_seconds'])
-        self.assertEqual(exercise.duration_in_minutes,
-                         progress[idx]['duration_in_minutes'])
 
     def test_progress_with_nonauth_user_error(self):
         """
@@ -120,30 +78,205 @@ class ExerciseProgressTest(APITestCase):
                              {'exercise_id': self.exercise1.id})
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_track_progress_suc(self):
+    def test_track_progress_sets_reps_rest_suc(self):
         """
-        Test SUCCESS: Retrieve an exercise progress
+        Test SUCCESS: Retrieve an exercise progress,
+        testing sets reps returned values
         """
+        sets = [2, 3, 4, 4, 4, 4, 4, None, 12, 10,
+                13, 13, 13, 13, 13, 13, 13, 13]
+
+        reps = [1, 1, 1, 5, 6, 6, 6, None, None, 2,
+                None, None, None, 2, 2, 2, 2, 2]
+
+        rest = [30, 30, 60, 60, 6, 10, 20, None, 10, None,
+                None, 12, None, None, 1, 1, None, 2]
+
+        expected_sets_output = [(2, 1, 30), (3, 1, 30), (4, 1, 60),
+                                (4, 5, 60), (4, 6, 6), (4, 6, 10),
+                                (4, 6, 20), (12, None, 10), (10, 2, None),
+                                (13, None, None), (13, None, 12),
+                                (13, 2, None), (13, 2, 1), (13, 2, 2)]
+        expected_counter_output = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2]
+        for i in range(len(sets)):
+            create_exercise_log(user=self.user, exercise=self.exercise1,
+                                workout=self.workout_log,
+                                number_of_sets=sets[i],
+                                number_of_reps=reps[i],
+                                rest_between_sets_seconds=rest[i])
         res = self.client.get(EXERCISE_PROGRESS_URL,
-                              {'exercise_id': str(self.exercise1.id)})
+                              {'exercise_id': self.exercise1.id})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(self.exercise1.id, res.data['exercise_id'])
         self.assertEqual(self.exercise1.name, res.data['exercise_name'])
-        progress = res.data['progress_logs']
+        progress = res.data['progress']
+        expected_keys = ['sets_reps_restTime',
+                         'number_exercises_between_each_sets_reps_restTime']
+        self.assertEqual(expected_keys, list(progress.keys()))
+        sets_progress = progress['sets_reps_restTime']
+        for i in range(len(expected_sets_output)):
+            self.assertEqual(sets_progress[i][0], expected_sets_output[i])
+            self.assertEqual(sets_progress[i][2], self.workout_log.id)
+        counts_progress = \
+            progress['number_exercises_between_each_sets_reps_restTime']
+        for i in range(len(expected_counter_output)):
+            self.assertEqual(counts_progress[i], expected_counter_output[i])
 
-        self.assert_exercise_progress(self.exer1_3, progress, 0)
-        self.assert_exercise_progress(self.exer1_1, progress, 1)
-        self.assert_exercise_progress(self.exer1_2, progress, 2)
-
-    def test_track_progress_only_current_exercise_suc(self):
-        """Test SUCCESS: the returned logs is this exercise's only """
-
+    def test_track_progress_only_user_exercise_suc(self):
+        """
+        Test SUCCESS: Retrieve an exercise progress, it only retrieve the user
+        and exercise sppecified
+        """
+        sets = [2, 3, 4, 4, 4, 4, 4, None, 12, 10, 13]
+        reps = [1, 1, 1, 5, 6, 6, 6, None, None, 2, None]
+        rest = [30, 30, 60, 60, 6, 10, 20, None, 10, None, None]
+        expected_sets_output = [(2, 1, 30), (3, 1, 30), (4, 1, 60),
+                                (4, 5, 60), (4, 6, 6), (4, 6, 10),
+                                (4, 6, 20), (12, None, 10), (10, 2, None),
+                                (13, None, None)]
+        expected_counter_output = [0, 0, 0, 0, 0, 0, 1, 0, 0]
+        for i in range(len(sets)):
+            create_exercise_log(user=self.user, exercise=self.exercise1,
+                                workout=self.workout_log,
+                                number_of_sets=sets[i],
+                                number_of_reps=reps[i],
+                                rest_between_sets_seconds=rest[i])
+            create_exercise_log(user=self.user, exercise=self.exercise2,
+                                workout=self.workout_log,
+                                number_of_sets=sets[i],
+                                number_of_reps=reps[i],
+                                rest_between_sets_seconds=rest[i])
+            create_exercise_log(user=self.tmp_user, exercise=self.exercise2,
+                                workout=self.workout_log,
+                                number_of_sets=sets[i],
+                                number_of_reps=reps[i],
+                                rest_between_sets_seconds=rest[i])
         res = self.client.get(EXERCISE_PROGRESS_URL,
-                              {'exercise_id': self.exercise2.id})
-        self.assertEqual(self.exercise2.id, res.data['exercise_id'])
-        self.assertEqual(self.exercise2.name, res.data['exercise_name'])
-        progress = res.data['progress_logs']
-        self.assertEqual(len(progress), 1)
-        self.assert_exercise_progress(self.exer2_1, progress, 0)
+                              {'exercise_id': self.exercise1.id})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.exercise1.id, res.data['exercise_id'])
+        self.assertEqual(self.exercise1.name, res.data['exercise_name'])
+        progress = res.data['progress']
+        expected_keys = ['sets_reps_restTime',
+                         'number_exercises_between_each_sets_reps_restTime']
+        self.assertEqual(expected_keys, list(progress.keys()))
+        sets_progress = progress['sets_reps_restTime']
+        for i in range(len(expected_sets_output)):
+            self.assertEqual(sets_progress[i][0], expected_sets_output[i])
+            self.assertEqual(sets_progress[i][2], self.workout_log.id)
+        counts_progress = \
+            progress['number_exercises_between_each_sets_reps_restTime']
+        for i in range(len(expected_counter_output)):
+            self.assertEqual(counts_progress[i], expected_counter_output[i])
+
+    def test_track_progress_other_fields_suc(self):
+        """
+        Test SUCCESS: Retrieve an exercise progress, it only retrieve the user
+        and exercise sppecified, and testing other fields
+        """
+        duration = [30, 12, 50, 60, 10, None, None, 1, 1, 1, 1, 2]
+        weight_in_kg = [300, 500, 10, 0, 10, None, None, 1, 1, 1, 1, 2]
+        expected_counter_output = [0, 0, 0, 0, 2, 3]
+        expected = {
+            'weight_in_kg': [300, 500, 10, 0, 10, 1, 2],
+            'duration_in_minutes': [30, 12, 50, 60, 10, 1, 2]
+        }
+        for i in range(len(duration)):
+            create_exercise_log(user=self.user, exercise=self.exercise1,
+                                workout=self.workout_log,
+                                duration_in_minutes=duration[i],
+                                weight_in_kg=weight_in_kg[i])
+            create_exercise_log(user=self.user, exercise=self.exercise2,
+                                workout=self.workout_log,
+                                duration_in_minutes=duration[i])
+            create_exercise_log(user=self.tmp_user, exercise=self.exercise2,
+                                workout=self.workout_log,
+                                duration_in_minutes=duration[i])
+        res = self.client.get(EXERCISE_PROGRESS_URL,
+                              {'exercise_id': self.exercise1.id})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.exercise1.id, res.data['exercise_id'])
+        self.assertEqual(self.exercise1.name, res.data['exercise_name'])
+        progress = res.data['progress']
+        expected_keys = ['duration_in_minutes',
+                         'number_exercises_between_each_duration_in_minutes',
+                         'weight_in_kg',
+                         'number_exercises_between_each_weight_in_kg']
+        self.assertEqual(expected_keys, list(progress.keys()))
+        fields = ['duration_in_minutes', 'weight_in_kg']
+        for field in fields:
+            field_progress = progress[f'{field}']
+            for i in range(len(expected[f'{field}'])):
+                self.assertEqual(field_progress[i][0], expected[f'{field}'][i])
+                self.assertEqual(field_progress[i][2], self.workout_log.id)
+
+            counts_progress = \
+                progress[f'number_exercises_between_each_{field}']
+            for i in range(len(expected_counter_output)):
+                self.assertEqual(counts_progress[i],
+                                 expected_counter_output[i])
+
+    def test_track_progress_all_fields_suc(self):
+        """
+        Test SUCCESS: Retrieve an exercise progress using all fields
+        """
+        duration = [30, 12, 50, 60, 10, None, None,
+                    1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 4]
+        weight_in_kg = [300, 500, 10, 0, 10, None,
+                        None, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 5]
+        sets = [2, 3, 4, 4, 4, 4, 4, None, 12, 10,
+                13, 13, 13, 13, 13, 13, 13, 13]
+        reps = [1, 1, 1, 5, 6, 6, 6, None, None, 2,
+                None, None, None, 2, 2, 2, 2, 2]
+        rest = [30, 30, 60, 60, 6, 10, 20, None, 10, None,
+                None, 12, None, None, 1, 1, None, 2]
+        expected = {
+            'weight_in_kg': [300, 500, 10, 0, 10, 1, 2, 5],
+            'duration_in_minutes': [30, 12, 50, 60, 10, 1, 2, 3, 4],
+            'sets_reps_restTime': [(2, 1, 30), (3, 1, 30), (4, 1, 60),
+                                   (4, 5, 60), (4, 6, 6), (4, 6, 10),
+                                   (4, 6, 20), (12, None, 10), (10, 2, None),
+                                   (13, None, None), (13, None, 12),
+                                   (13, 2, None), (13, 2, 1), (13, 2, 2)]
+        }
+        expected_counter = {
+            'weight_in_kg': [0, 0, 0, 0, 2, 3, 5],
+            'duration_in_minutes': [0, 0, 0, 0, 2, 3, 4, 0],
+            'sets_reps_restTime': [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2]
+        }
+        for i in range(len(duration)):
+            create_exercise_log(user=self.user, exercise=self.exercise1,
+                                workout=self.workout_log,
+                                duration_in_minutes=duration[i],
+                                weight_in_kg=weight_in_kg[i],
+                                number_of_sets=sets[i],
+                                number_of_reps=reps[i],
+                                rest_between_sets_seconds=rest[i])
+        res = self.client.get(EXERCISE_PROGRESS_URL,
+                              {'exercise_id': self.exercise1.id})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.exercise1.id, res.data['exercise_id'])
+        self.assertEqual(self.exercise1.name, res.data['exercise_name'])
+        progress = res.data['progress']
+        expected_keys = ['duration_in_minutes',
+                         'number_exercises_between_each_duration_in_minutes',
+                         'weight_in_kg',
+                         'number_exercises_between_each_weight_in_kg',
+                         'sets_reps_restTime',
+                         'number_exercises_between_each_sets_reps_restTime']
+        self.assertEqual(expected_keys, list(progress.keys()))
+        fields = ['duration_in_minutes', 'weight_in_kg', 'sets_reps_restTime']
+        for field in fields:
+            field_progress = progress[f'{field}']
+            for i in range(len(expected[f'{field}'])):
+                self.assertEqual(field_progress[i][0], expected[f'{field}'][i])
+                self.assertEqual(field_progress[i][2], self.workout_log.id)
+
+            counts_progress = \
+                progress[f'number_exercises_between_each_{field}']
+            for i in range(len(expected_counter[f'{field}'])):
+                self.assertEqual(counts_progress[i],
+                                 expected_counter[f'{field}'][i])
 
     def test_try_track_other_user_exercise_not_found_error(self):
         """
@@ -203,3 +336,68 @@ class ExerciseProgressTest(APITestCase):
                               {'exercise_id': 1.5})
         self.assertEqual(res.data['Error'],
                          "Exercise ID must be a valid integer.")
+
+    def test_progress_no_progress_suc(self):
+        """
+        Test SUCCESS: Retrieve an exercise progress, but with no progress
+        """
+        res = self.client.get(EXERCISE_PROGRESS_URL,
+                              {'exercise_id': str(self.exercise1.id)})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.exercise1.id, res.data['exercise_id'])
+        self.assertEqual(self.exercise1.name, res.data['exercise_name'])
+        self.assertEqual(len(res.data['progress']), 0)
+
+    def test_progress_mixed_counter_suc(self):
+        """
+        Test SUCCESS: Retrieve an exercise progress, but with only one
+        progress in some fields and other more that one.
+        """
+        duration = [0, 1, 1]
+        weight_in_kg = [0, 0, None]
+        sets = [2, 2, 2]
+        reps = [1, 1, 1]
+        rest = [30, 30, 30]
+        expected = {
+            'weight_in_kg': [0],
+            'duration_in_minutes': [0, 1],
+            'sets_reps_restTime': [(2, 1, 30)]
+        }
+        duration_in_minutes_counter = [0]
+
+        for i in range(len(duration)):
+            create_exercise_log(user=self.user, exercise=self.exercise1,
+                                workout=self.workout_log,
+                                duration_in_minutes=duration[i],
+                                weight_in_kg=weight_in_kg[i],
+                                number_of_sets=sets[i],
+                                number_of_reps=reps[i],
+                                rest_between_sets_seconds=rest[i])
+        res = self.client.get(EXERCISE_PROGRESS_URL,
+                              {'exercise_id': str(self.exercise1.id)})
+        progress = res.data['progress']
+        expected_keys = ['duration_in_minutes',
+                         'number_exercises_between_each_duration_in_minutes',
+                         'weight_in_kg',
+                         'number_exercises_between_each_weight_in_kg',
+                         'sets_reps_restTime',
+                         'number_exercises_between_each_sets_reps_restTime']
+        self.assertEqual(expected_keys, list(progress.keys()))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.exercise1.id, res.data['exercise_id'])
+        self.assertEqual(self.exercise1.name, res.data['exercise_name'])
+        self.assertEqual(0, len(
+            progress['number_exercises_between_each_weight_in_kg']))
+        self.assertEqual(0, len(
+            progress['number_exercises_between_each_sets_reps_restTime']))
+        fields = ['duration_in_minutes', 'weight_in_kg', 'sets_reps_restTime']
+        for field in fields:
+            field_progress = progress[f'{field}']
+            for i in range(len(expected[f'{field}'])):
+                self.assertEqual(field_progress[i][0], expected[f'{field}'][i])
+                self.assertEqual(field_progress[i][2], self.workout_log.id)
+        counts_progress = \
+            progress['number_exercises_between_each_duration_in_minutes']
+        for i in range(len(counts_progress)):
+            self.assertEqual(counts_progress[i],
+                             duration_in_minutes_counter[i])

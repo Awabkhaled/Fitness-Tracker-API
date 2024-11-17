@@ -134,4 +134,20 @@ class ExerciseLogProgressListSerializer(serializers.ModelSerializer):
         model = ExerciseLog
         fields = ['number_of_sets', 'number_of_reps',
                   'rest_between_sets_seconds', 'duration_in_minutes',
-                  'created_at', 'workout_log']
+                  'weight_in_kg', 'created_at', 'workout_log']
+
+    def to_representation(self, instance):
+        """Convert created to be date only"""
+        instance.created_at = instance.created_at.strftime("%Y-%m-%d")
+        ret = super().to_representation(instance)
+
+        sets = ret.pop('number_of_sets')
+        reps = ret.pop('number_of_reps')
+        rests = ret.pop('rest_between_sets_seconds')
+
+        if sets or reps or rests:
+            ret['sets_reps_restTime'] = (sets, reps, rests)
+        else:
+            ret['sets_reps_restTime'] = None
+
+        return ret
