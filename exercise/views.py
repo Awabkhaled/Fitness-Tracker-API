@@ -14,7 +14,13 @@ from django.db.models import Q
 import re
 from django.core.exceptions import ValidationError as VE
 from exercise.validators import validate_exercise_name
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiResponse,
+    inline_serializer,
+    OpenApiExample)
+from rest_framework import serializers
 from rest_framework.response import Response
 
 
@@ -238,17 +244,73 @@ class ExerciseSearchView(ListAPIView):
             name="exercise_id",
             type=int,
             location=OpenApiParameter.QUERY,
-            description="id of the exercise to see the progress for",
+            description="ID of the exercise to see the progress for.",
             required=True,
         ),
-    ]
+    ],
+    responses={
+        200: OpenApiResponse(
+            response=inline_serializer(
+                name="ExerciseProgressResponse",
+                fields={
+                    "exercise_id": serializers.IntegerField(),
+                    "exercise_name": serializers.CharField(),
+                    "progress": serializers.DictField(
+                        child=serializers.ListField(
+                            child=serializers.ListField(
+                                child=serializers.CharField())
+                        )
+                    ),
+                },
+            ),
+            description="A detailed report of exercise progress.",
+            examples=[
+                OpenApiExample(
+                    name="Successful Response",
+                    value={
+                        "exercise_id": 1,
+                        "exercise_name": "exer1",
+                        "progress": {
+                            "duration_in_minutes": [
+                                [30, "2024-11-17", 1],
+                                [12, "2024-11-17", 1],
+                            ],
+                            "number_exercises_between_each_duration_in_minutes": [0, 0],
+                            "weight_in_kg": [
+                                [300, "2024-11-17", 1],
+                                [500, "2024-11-17", 1],
+                            ],
+                            "number_exercises_between_each_weight_in_kg": [0, 0],
+                            "sets_reps_restTime": [
+                                [[2, 1, 30], "2024-11-17", 1],
+                                [[3, 1, 30], "2024-11-17", 1],
+                            ],
+                            "number_exercises_between_each_sets_reps_restTime": [0, 0],
+                        },
+                    },
+                    status_codes=["200"],
+                ),
+            ],
+        )
+    }
 )
 class ExerciseProgressView(GenericAPIView):
     """
-    endpoint to return the progress of an exercise
-    - it takes an id for an exercise and returns list
-    of exercise logs with same user and erexrcise but
-    different workout logs, with some info serialized
+    Endpoint to return the progress of an exercise.
+
+    ### Parameters
+    - `exercise_id` (query parameter, required): ID of the exercise.
+
+    ### Response
+    A dictionary with the following keys:
+    - `exercise_id`: The ID of the exercise.
+    - `exercise_name`: The name of the exercise.
+    - `progress`: A dictionary where each key is a tracked field
+    (e.g., `duration_in_minutes`, `weight_in_kg`).
+      Each field's value is a list of tuples containing:
+        - The value of the field.
+        - The date the log was created (format: `YY-MM-DD`).
+        - The workout log ID.
     """
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]

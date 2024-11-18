@@ -17,7 +17,8 @@ class ExerciseLogSerializer(serializers.ModelSerializer):
         fields = ['id', 'exercise_name', 'workout_log', 'user',
                   'exercise', 'notes', 'number_of_sets',
                   'number_of_reps', 'rest_between_sets_seconds',
-                  'duration_in_minutes', 'rest_is_in_minutes', 'created_at']
+                  'duration_in_minutes', 'rest_is_in_minutes',
+                  'weight_in_kg', 'created_at']
         read_only_fields = ['id', 'exercise', 'user', 'created_at']
         write_only_fields = ['rest_is_in_minutes', 'exercise_name']
 
