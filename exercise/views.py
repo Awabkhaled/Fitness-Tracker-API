@@ -271,21 +271,18 @@ class ExerciseSearchView(ListAPIView):
                         "exercise_id": 1,
                         "exercise_name": "exer1",
                         "progress": {
-                            "duration_in_minutes": [
-                                [30, "2024-11-17", 1],
-                                [12, "2024-11-17", 1],
-                            ],
-                            "number_exercises_between_each_duration_in_minutes": [0, 0],
                             "weight_in_kg": [
                                 [300, "2024-11-17", 1],
                                 [500, "2024-11-17", 1],
                             ],
-                            "number_exercises_between_each_weight_in_kg": [0, 0],
+                            "number_exercises_between_each_weight_in_kg":
+                            [0, 0],
                             "sets_reps_restTime": [
                                 [[2, 1, 30], "2024-11-17", 1],
                                 [[3, 1, 30], "2024-11-17", 1],
                             ],
-                            "number_exercises_between_each_sets_reps_restTime": [0, 0],
+                            "number_exercises_between_each_sets_reps_restTime":
+                            [0, 0],
                         },
                     },
                     status_codes=["200"],
