@@ -42,5 +42,6 @@ dist/
 # flake8
 .flake8
 
-# commands
+# Extra file
 command.txt
+next features.txt
